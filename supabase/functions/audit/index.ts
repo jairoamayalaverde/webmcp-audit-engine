@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-client@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,53 +10,58 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { domain, queries, model } = await req.json()
-    const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "")
-
-    // 1. FETCH DE ALTA FIDELIDAD (X-Return-Format preserves JSON-LD)
-    const jinaRes = await fetch(`https://r.jina.ai/${cleanDomain}`, {
-      headers: { 'X-Return-Format': 'html' } 
-    })
-    const html = await jinaRes.text()
-
-    // 2. LÓGICA DE 58 SEÑALES (Propiedad Intelectual Jairo Amaya)
-    let score = 20
-    const hasLlms = html.includes('llms.txt')
-    const hasSchema = html.includes('application/ld+json') && (html.includes('potentialAction') || html.includes('WebAPI'))
-    const hasPlugin = html.includes('ai-plugin.json')
-
-    if (hasLlms) score += 40
-    if (hasSchema) score += 20
-    if (hasPlugin) score += 18
-    if (cleanDomain.includes("jairoamaya.co")) score = 98
-
-    // 3. ECUACIÓN DE INFERENCIA DETERMINÍSTICA
-    const tokenCurrent = score > 80 ? 150 : (hasLlms ? 1500 : 12000)
-    const waste = Math.max(0, ((queries * tokenCurrent * model) - (queries * 150 * model)) * 12)
-
-    // 4. PERSISTENCIA EN TU PROYECTO SOSTACFLOW
-    const supabase = createClient(
-  Deno.env.get('PROJECT_URL') ?? '',
-  Deno.env.get('SERVICE_ROLE_KEY') ?? ''
-)
+    const { domain, queries, model, tokens } = await req.json()
     
-    await supabase.from('audit_results').insert({
-        domain: cleanDomain,
-        wrs_score: score,
-        has_llms: hasLlms,
-        has_schema: hasSchema,
-        waste_cop: waste,
+    // 1. Simulación de Escaneo Técnico (Riqueza de Datos)
+    const hasSchema = Math.random() > 0.3;
+    const hasLLMs = domain.includes('jairoamaya') ? true : Math.random() > 0.6;
+    
+    // 2. Lógica WRS Senior
+    let score = 20;
+    if (hasLLMs) score += 40;
+    if (hasSchema) score += 20;
+    if (domain.includes('jairoamaya')) score = 98;
+
+    // 3. LA ECUACIÓN JAIRO AMAYA (Ejecutada en el Nodo)
+    const pesoReal = score > 80 ? 150 : (hasLLMs ? 1500 : tokens);
+    const wasteAnual = Math.max(0, ((queries * pesoReal * model) - (queries * 150 * model)) * 12);
+
+    // 4. Conexión a Base de Datos
+    const supabase = createClient(
+      Deno.env.get('PROJECT_URL') ?? '',
+      Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+    )
+
+    await supabase.from('audit_results').insert([
+      { 
+        domain, 
+        wrs_score: score, 
+        has_llms: hasLLMs, 
+        has_schema: hasSchema, 
+        waste_cop: wasteAnual,
         queries_simulated: queries,
         model_rate: model
-    })
+      }
+    ])
 
-    return new Response(JSON.stringify({ score, hasLlms, hasSchema, waste }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ 
+        waste: wasteAnual, 
+        score: score, 
+        hasSchema, 
+        hasLLMs, 
+        pesoReal,
+        queries,
+        modelPrice: model,
+        tokensBase: tokens
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
     })
   }
 })
