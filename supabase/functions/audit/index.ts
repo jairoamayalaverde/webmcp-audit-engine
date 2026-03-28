@@ -4,94 +4,42 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    // 1. RECEPCIÓN DE PARÁMETROS TÉCNICOS
     const { domain, queries, model, tokens } = await req.json()
-
-    if (!domain) {
-      throw new Error("El dominio es requerido para iniciar el escaneo de capa semántica.");
-    }
-
-    // 2. MATRIZ DE AUDITORÍA DETERMINÍSTICA (Lógica Jairo Amaya)
+    
+    // Lógica Técnica Jairo Amaya
     const hasSchema = Math.random() > 0.3;
-    const hasLLMs   = domain.includes('jairoamaya') ? true : Math.random() > 0.6;
+    const hasLLMs = domain.includes('jairoamaya') ? true : Math.random() > 0.6;
+    let score = domain.includes('jairoamaya') ? 98 : (hasLLMs ? 60 : 25 + (hasSchema ? 15 : 0));
 
-    // Cálculo del Web Readiness Score (WRS)
-    let score = 20;
-    if (hasLLMs)   score += 40;
-    if (hasSchema) score += 20;
-    if (domain.includes('jairoamaya')) score = 98;
+    // LA ECUACIÓN DE JAIRO (Benchmark 150)
+    const pesoReal = score > 80 ? 150 : (hasLLMs ? 1500 : (tokens || 12000));
+    const wasteAnual = Math.max(0, ((queries * pesoReal * model) - (queries * 150 * model)) * 12);
+    const gap = 87 - score;
 
-    // 3. LA ECUACIÓN DE SOBERANÍA IA
-    const benchmarkIdeal = 150;
-    const pesoReal       = score > 80 ? benchmarkIdeal : (hasLLMs ? 1500 : (tokens || 12000));
+    // Persistencia en DB
+    const supabase = createClient(Deno.env.get('PROJECT_URL') ?? '', Deno.env.get('SERVICE_ROLE_KEY') ?? '')
+    await supabase.from('audit_results').insert([{ domain, wrs_score: score, waste_cop: wasteAnual, queries_simulated: queries }])
 
-    const deltaTokens  = Math.max(0, pesoReal - benchmarkIdeal);
-    const wasteMensual = (deltaTokens * model / 1000000) * queries;
-    const wasteAnual   = wasteMensual * 12;
-
-    // 4. PERSISTENCIA EN SUPABASE
-    const supabase = createClient(
-      Deno.env.get('PROJECT_URL')    ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const { error: dbError } = await supabase
-      .from('audit_results')
-      .insert([{
-        domain            : domain.toLowerCase(),
-        wrs_score         : score,
-        has_llms          : hasLLMs,
-        has_schema        : hasSchema,
-        waste_cop         : wasteAnual,
-        queries_simulated : queries,
-        model_rate        : model,
-        tokens_base       : tokens
-      }])
-
-    if (dbError) {
-      console.error("Error en persistencia:", dbError.message)
-    }
-
-    // 5. RESPUESTA — campos alineados con el HTML
+    // RESPUESTA SINCRONIZADA (Evita el 'undefined')
     return new Response(
-      JSON.stringify({
-        success  : true,
-        waste    : wasteAnual,
-        score    : score,
-        hasLLMs,
-        hasSchema,
-        details  : {
-          pesoReal,               // ← c_t en el HTML
-          p        : model,       // ← c_m en el HTML
-          q        : queries,     // ← c_q en el HTML
-          gap      : 87 - score,  // ← gap_msg en el HTML
-          status   : score < 50 ? "CRÍTICO" : "OPTIMIZADO",
-          // Campos extra (no los usa el HTML pero útiles para debug)
-          benchmark      : benchmarkIdeal,
-          impactoMensual : wasteMensual,
-          nodoId         : "hompawsonronlgrvujjb"
-        }
+      JSON.stringify({ 
+        waste: wasteAnual, 
+        score, 
+        hasLLMs, 
+        hasSchema, 
+        pesoReal, // Este nombre debe ser exacto al HTML
+        q: queries, 
+        p: model, 
+        gap,
+        status: score < 50 ? "CRÍTICO" : "OPTIMIZADO"
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        success : false,
-        error   : error.message,
-        trace   : "Error en el Nodo Determinístico"
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
-  }
+  } catch (e) { return new Response(JSON.stringify({error: e.message}), { status: 400, headers: corsHeaders }) }
 })
