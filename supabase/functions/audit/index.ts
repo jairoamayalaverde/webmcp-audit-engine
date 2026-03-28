@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-client@2'
+// Importación corregida para evitar el error de "Module not found"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,26 +13,27 @@ serve(async (req) => {
   try {
     const { domain, queries, model, tokens } = await req.json()
     
-    // 1. Simulación de Escaneo Técnico (Riqueza de Datos)
+    // 1. Simulación de Escaneo (Recuperando la lógica original)
     const hasSchema = Math.random() > 0.3;
     const hasLLMs = domain.includes('jairoamaya') ? true : Math.random() > 0.6;
     
-    // 2. Lógica WRS Senior
+    // 2. Lógica WRS Senior (Tu Benchmark personalizado)
     let score = 20;
     if (hasLLMs) score += 40;
     if (hasSchema) score += 20;
     if (domain.includes('jairoamaya')) score = 98;
 
-    // 3. LA ECUACIÓN JAIRO AMAYA (Ejecutada en el Nodo)
-    const pesoReal = score > 80 ? 150 : (hasLLMs ? 1500 : tokens);
+    // 3. LA ECUACIÓN JAIRO AMAYA (Transferida al Nodo)
+    const pesoReal = score > 80 ? 150 : (hasLLMs ? 1500 : (tokens || 12000));
     const wasteAnual = Math.max(0, ((queries * pesoReal * model) - (queries * 150 * model)) * 12);
 
-    // 4. Conexión a Base de Datos
+    // 4. Conexión a Base de Datos (Usando tus llaves de proyecto)
     const supabase = createClient(
       Deno.env.get('PROJECT_URL') ?? '',
       Deno.env.get('SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Guardar el registro para tu base de datos
     await supabase.from('audit_results').insert([
       { 
         domain, 
