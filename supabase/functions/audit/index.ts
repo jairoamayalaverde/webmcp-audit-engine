@@ -36,9 +36,9 @@ serve(async (req) => {
 
     // 4. PERSISTENCIA EN TU PROYECTO SOSTACFLOW
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+  Deno.env.get('PROJECT_URL') ?? '',
+  Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+)
     
     await supabase.from('audit_results').insert({
         domain: cleanDomain,
